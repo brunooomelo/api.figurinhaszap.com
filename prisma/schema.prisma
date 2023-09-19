@@ -10,22 +10,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Lead {
-  id        String    @id @default(uuid())
-  name      String
-  wpp       String
-  email     String?
-  token String?
-  isAuthenticate Boolean @default(false)
-  stickers  Sticker[]
-  createdAt DateTime  @default(now())
+model User {
+  id              String    @id @default(uuid())
+  whatsapp        String
+  token           String?
+  isAuthenticated Boolean   @default(false)
+  createdAt       DateTime  @default(now())
 }
 
-model Sticker {
-  id        String   @id @default(uuid())
-  name      String
-  path      String
-  lead      Lead?    @relation(fields: [leadId], references: [id])
-  leadId    String?
-  createdAt DateTime @default(now())
-}

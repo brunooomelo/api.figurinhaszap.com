@@ -13,7 +13,7 @@ const client = new Client({
       executablePath: environments.executablePath
     }))
   }
-});
+})
 
 client.on('qr', (qr) => {
   // Generate and scan this code with your phone
@@ -31,8 +31,7 @@ client.on('message', async msg => {
   if (msg.body == '!ping') {
     msg.reply('pong');
   }
-
-  await msg.delete()
+  await msg.getChat().then((chat) => chat.delete())
 });
 
 
@@ -52,11 +51,12 @@ export const generateAndSendSticker = async (msgFrom: string, imageBuffer: strin
     sendMediaAsSticker: true, 
     stickerAuthor: 'sticker maker',
     stickerCategories: [],
-    stickerName
+    stickerName: ''
   })
+  .then(chat => chat.delete())
 }
 
 export const sendMessage = async (msgFrom: string, message: string) => {
-  await client.sendMessage(msgFrom, message)
+  await client.sendMessage(msgFrom, message).then(chat => chat.delete())
 }
 export const ClientInitialize = () => client.initialize()
