@@ -257,6 +257,12 @@ app.get('/session', async (request, reply) => {
   }
 })
 
+app.get('/hc', (request, reply) => {
+  return reply.status(200).send({
+    message: "OK"
+  })
+})
+
 
 
 ClientInitialize().then(() =>
