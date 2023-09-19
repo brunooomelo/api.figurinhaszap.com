@@ -7,6 +7,7 @@ import { environments } from './environment';
 const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
     headless: environments.headless,
     ...(!!environments.executablePath && ( {
       executablePath: environments.executablePath
