@@ -1,0 +1,11 @@
+node_modules
+# Keep environment variables out of version control
+.env
+
+# temp
+.wwebjs*
+
+.DS_Store
+.vscode
+build/
+*.db

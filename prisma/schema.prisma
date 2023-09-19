@@ -1,0 +1,31 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Lead {
+  id        String    @id @default(uuid())
+  name      String
+  wpp       String
+  email     String?
+  token String?
+  isAuthenticate Boolean @default(false)
+  stickers  Sticker[]
+  createdAt DateTime  @default(now())
+}
+
+model Sticker {
+  id        String   @id @default(uuid())
+  name      String
+  path      String
+  lead      Lead?    @relation(fields: [leadId], references: [id])
+  leadId    String?
+  createdAt DateTime @default(now())
+}
