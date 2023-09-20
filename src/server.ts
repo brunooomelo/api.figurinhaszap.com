@@ -23,6 +23,8 @@ app.register(fastifyMultipart, {
   },
 });
 
+const formatPhoneForWhatsapp = (phone: string) => `${phone.replace('+', '')}@c.us`;
+
 app.post("/stickers", async (request, reply) => {
   try {
     const data = await request.file();
@@ -94,10 +96,14 @@ app.post("/stickers", async (request, reply) => {
       });
     }
 
-    await generateAndSendSticker(user.whatsapp, compressed.data, "sticker");
+    await generateAndSendSticker(
+      formatPhoneForWhatsapp(user.whatsapp),
+      compressed.data,
+      "sticker"
+    );
 
     return reply.status(200).send({
-      message: "message sent!",
+      message: "Figurinha enviado",
     });
   } catch (error) {
     return reply.status(200).send({ error: error });
@@ -112,8 +118,10 @@ app.post("/login", async (request, reply) => {
 
     const { whatsapp } = bodySchema.parse(request.body);
 
+    const whatsappSanitied = whatsapp.replace("@c.us", "");
+
     const verifyWhatsapp = await prisma.user.findFirst({
-      where: { whatsapp: whatsapp },
+      where: { whatsapp: whatsappSanitied },
       select: {
         id: true,
         isAuthenticated: true,
@@ -138,8 +146,8 @@ app.post("/login", async (request, reply) => {
         });
 
         await sendMessage(
-          user.whatsapp,
-          `Somos a [Sticker Name] precisamos validar seu numero,\n segue o PIN para valida: ${token}`
+          formatPhoneForWhatsapp(whatsappSanitied),
+          `Somos a Figurinhaszap precisamos validar seu numero,\n segue o PIN para valida: *${token}*`
         );
         return reply.status(200).send(user);
       }
@@ -149,7 +157,7 @@ app.post("/login", async (request, reply) => {
 
     const user = await prisma.user.create({
       data: {
-        whatsapp: whatsapp,
+        whatsapp: whatsappSanitied,
         token,
       },
       select: {
@@ -159,8 +167,8 @@ app.post("/login", async (request, reply) => {
       },
     });
     await sendMessage(
-      user.whatsapp,
-      `Somos a [Sticker Name] precisamos validar seu numero,\n segue o PIN para valida: ${token}`
+      formatPhoneForWhatsapp(whatsappSanitied),
+      `Somos a Figurinhaszap precisamos validar seu numero,\n segue o PIN para valida: ${token}`
     );
 
     return reply.status(200).send(user);
@@ -238,16 +246,12 @@ app.post("/phone/validade", async (request, reply) => {
         isAuthenticated: true,
         token: null,
       },
-      select: {
-        id: true,
-        isAuthenticated: true,
-        whatsapp: true,
-      },
     });
 
     const tokenJWT = jwt.sign(
       {
         id: user.id,
+        whatsapp: user.whatsapp,
       },
       environments.secret,
       {
@@ -283,6 +287,11 @@ app.get("/session", async (request, reply) => {
       const user = await prisma.user.findFirst({
         where: {
           id,
+        },
+        select: {
+          id: true,
+          isAuthenticated: true,
+          whatsapp: true,
         },
       });
       if (!user) {

@@ -49,7 +49,7 @@ export const generateAndSendSticker = async (msgFrom: string, imageBuffer: strin
 
   await client.sendMessage(msgFrom, media, {
     sendMediaAsSticker: true, 
-    stickerAuthor: 'sticker maker',
+    stickerAuthor: 'figurinhaszap.com',
     stickerCategories: [],
     stickerName: ''
   })
