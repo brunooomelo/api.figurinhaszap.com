@@ -14,7 +14,9 @@ import { generateToken } from "./util/generateToken";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
 
-const app = fastify();
+const app = fastify({
+  logger: true,
+});
 
 app.register(fastifyCors, { origin: "*" });
 app.register(fastifyMultipart, {
@@ -23,7 +25,8 @@ app.register(fastifyMultipart, {
   },
 });
 
-const formatPhoneForWhatsapp = (phone: string) => `${phone.replace('+', '')}@c.us`;
+const formatPhoneForWhatsapp = (phone: string) =>
+  `+${phone.replace("+", "")}@c.us`;
 
 app.post("/stickers", async (request, reply) => {
   try {
@@ -126,33 +129,30 @@ app.post("/login", async (request, reply) => {
         id: true,
         isAuthenticated: true,
         whatsapp: true,
+        token: true,
       },
     });
     const token = generateToken();
 
     if (verifyWhatsapp) {
-      if (verifyWhatsapp.isAuthenticated) {
-        const user = await prisma.user.update({
-          where: { id: verifyWhatsapp.id },
-          data: {
-            token,
-            isAuthenticated: false,
-          },
-          select: {
-            id: true,
-            isAuthenticated: true,
-            whatsapp: true,
-          },
-        });
+      const user = await prisma.user.update({
+        where: { id: verifyWhatsapp.id },
+        data: {
+          token,
+          isAuthenticated: false,
+        },
+        select: {
+          id: true,
+          isAuthenticated: true,
+          whatsapp: true,
+        },
+      });
 
-        await sendMessage(
-          formatPhoneForWhatsapp(whatsappSanitied),
-          `Somos a Figurinhaszap precisamos validar seu numero,\n segue o PIN para valida: *${token}*`
-        );
-        return reply.status(200).send(user);
-      }
-
-      return reply.status(200).send(verifyWhatsapp);
+      await sendMessage(
+        formatPhoneForWhatsapp(whatsappSanitied),
+        `Somos a Figurinhaszap precisamos validar seu numero,\n segue o PIN para valida: *${token}*`
+      );
+      return reply.status(200).send(user);
     }
 
     const user = await prisma.user.create({
