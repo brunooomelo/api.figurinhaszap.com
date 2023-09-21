@@ -47,13 +47,15 @@ export const generateAndSendSticker = async (
   await Promise.race([
     await client
       .sendMessage(msgFrom, "Aguarde o sticker esta sendo gerado...")
-      .then((chat) => {
-        return client.sendMessage(msgFrom, media, {
-          sendMediaAsSticker: true,
-          stickerAuthor: "figurinhaszap.com",
-          stickerCategories: [],
-          stickerName: "",
-        });
+      .then(() => {
+        return client
+          .sendMessage(msgFrom, media, {
+            sendMediaAsSticker: true,
+            stickerAuthor: "figurinhaszap.com",
+            stickerCategories: [],
+            stickerName: "",
+          })
+          .then((chat) => chat.delete());
       })
       .catch(console.log),
     await client
@@ -62,12 +64,14 @@ export const generateAndSendSticker = async (
         "Aguarde o sticker esta sendo gerado..."
       )
       .then(() => {
-        return client.sendMessage(msgFrom.replace("+", ""), media, {
-          sendMediaAsSticker: true,
-          stickerAuthor: "figurinhaszap.com",
-          stickerCategories: [],
-          stickerName: "",
-        });
+        return client
+          .sendMessage(msgFrom.replace("+", ""), media, {
+            sendMediaAsSticker: true,
+            stickerAuthor: "figurinhaszap.com",
+            stickerCategories: [],
+            stickerName: "",
+          })
+          .then((chat) => chat.delete());
       })
       .catch(console.log),
   ]);
