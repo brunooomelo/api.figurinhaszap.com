@@ -29,8 +29,29 @@ client.on("message_create", async (msg) => {
   if (msg.body == "!ping") {
     msg.reply("pong");
   }
-  // await msg.getChat().then((chat) => chat.delete())
 });
+
+client.on("disconnected", () => {});
+
+export const formatBrazilianNumber = async (msgFrom: string) => {
+  let to = msgFrom.replace("+", "");
+  let contactId;
+  if (to.startsWith("+55") && to.length == 14 && to[5] === "9") {
+    contactId = await client.getNumberId(to.slice(0, 5) + to.slice(5));
+  }
+
+  if (!contactId) {
+    contactId = await client.getNumberId(to);
+  }
+
+  if (contactId) {
+    to = contactId._serialized;
+  }
+  if (!contactId) {
+    throw new Error('Este número não existe')
+  }
+  return to;
+};
 
 export const generateAndSendSticker = async (
   msgFrom: string,
@@ -84,4 +105,7 @@ export const sendMessage = async (msgFrom: string, message: string) => {
   ]);
 };
 
-export const ClientInitialize = () => client.initialize();
+export const ClientInitialize = () =>
+  client.initialize().catch(() => {
+    console.log("===================");
+  });

@@ -2,6 +2,7 @@ import { fastify } from "fastify";
 import { fastifyCors } from "@fastify/cors";
 import {
   ClientInitialize,
+  formatBrazilianNumber,
   generateAndSendSticker,
   sendMessage,
 } from "./lib/whatsapp";
@@ -10,14 +11,12 @@ import fastifyMultipart from "@fastify/multipart";
 import sharp from "sharp";
 import path from "path";
 import { prisma } from "./lib/prisma";
-import { generateToken } from "./util/generateToken";
+import { generateToken } from "./utils/generateToken";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
-import { generateMessageWithToken, message } from "./util/generateMessage";
+import { generateMessageWithToken, message } from "./utils/generateMessage";
 
-const app = fastify({
-  logger: true,
-});
+const app = fastify();
 
 app.register(fastifyCors, { origin: "*" });
 app.register(fastifyMultipart, {
@@ -29,7 +28,7 @@ app.register(fastifyMultipart, {
 const PLATFORM_NAME = "Figurinhaszap";
 
 const formatPhoneForWhatsapp = (phone: string) =>
-  `+${phone.replace("+", "")}@c.us`;
+  `${phone.replace("+", "")}@c.us`;
 
 app.post("/stickers", async (request, reply) => {
   try {
@@ -111,11 +110,14 @@ app.post("/stickers", async (request, reply) => {
       },
     });
 
-    await generateAndSendSticker(
-      formatPhoneForWhatsapp(user.whatsapp),
-      compressed.data,
-      "sticker"
-    );
+    let to = user.whatsapp;
+    if (user.whatsapp.startsWith("+55")) {
+      to = await formatBrazilianNumber(user.whatsapp);
+    } else {
+      to = formatPhoneForWhatsapp(to);
+    }
+
+    await generateAndSendSticker(to, compressed.data, "sticker");
 
     return reply.status(200).send({
       message: "Figurinha enviado",
@@ -146,6 +148,13 @@ app.post("/login", async (request, reply) => {
     });
     const token = generateToken();
 
+    let to = whatsappSanitied;
+    if (whatsappSanitied.startsWith("+55")) {
+      to = await formatBrazilianNumber(whatsappSanitied);
+    } else {
+      to = to;
+    }
+
     if (verifyWhatsapp) {
       const user = await prisma.user.update({
         where: { id: verifyWhatsapp.id },
@@ -161,7 +170,7 @@ app.post("/login", async (request, reply) => {
       });
 
       await sendMessage(
-        formatPhoneForWhatsapp(whatsappSanitied),
+        to,
         generateMessageWithToken(message, {
           "[platform_name]": PLATFORM_NAME,
           "[token_verification]": token,
@@ -181,8 +190,9 @@ app.post("/login", async (request, reply) => {
         whatsapp: true,
       },
     });
+
     await sendMessage(
-      formatPhoneForWhatsapp(whatsappSanitied),
+      to,
       generateMessageWithToken(message, {
         "[platform_name]": PLATFORM_NAME,
         "[token_verification]": token,
