@@ -81,10 +81,15 @@ app.post("/stickers", async (request, reply) => {
 
     const imageBuffer = await data.toBuffer();
     const isGif = [".webp", ".gif"].includes(extension);
+    const isPNG = extension.includes(".png");
 
-    const metadata = await sharp(imageBuffer, { animated: isGif }).metadata();
+    const isAnimated = isPNG || isGif;
 
-    const imageShaped = sharp(imageBuffer, { animated: isGif });
+    const metadata = await sharp(imageBuffer, {
+      animated: isAnimated,
+    }).metadata();
+
+    const imageShaped = sharp(imageBuffer, { animated: isAnimated });
     if (
       (metadata.width && metadata.width > 512) ||
       (metadata.height && metadata.height > 512)
@@ -117,7 +122,12 @@ app.post("/stickers", async (request, reply) => {
       to = formatPhoneForWhatsapp(to);
     }
 
-    await generateAndSendSticker(to, compressed.data, "sticker");
+    await generateAndSendSticker(
+      to,
+      compressed.data,
+      "sticker",
+      isPNG || isAnimated
+    );
 
     return reply.status(200).send({
       message: "Figurinha enviado",

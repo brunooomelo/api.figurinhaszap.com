@@ -48,7 +48,7 @@ export const formatBrazilianNumber = async (msgFrom: string) => {
     to = contactId._serialized;
   }
   if (!contactId) {
-    throw new Error('Este número não existe')
+    throw new Error("Este número não existe");
   }
   return to;
 };
@@ -56,56 +56,34 @@ export const formatBrazilianNumber = async (msgFrom: string) => {
 export const generateAndSendSticker = async (
   msgFrom: string,
   imageBuffer: string | Buffer,
-  stickerName: string
+  stickerName: string,
+  animated = false
 ) => {
-  const fileSharp = (await sharp(imageBuffer, { animated: true })
+  const fileSharp = (await sharp(imageBuffer, { animated })
     .resize({ height: 512, width: 512, fit: "cover", position: "center" })
     .webp()
     .toBuffer()) as unknown as string;
 
   const media = new MessageMedia("image/webp", fileSharp, "banner.webp");
 
-  await Promise.race([
-    client
-      .sendMessage(msgFrom, media, {
-        sendMediaAsSticker: true,
-        stickerAuthor: "figurinhaszap.com",
-        stickerCategories: [],
-        stickerName: "",
-      })
-      .then((message) => message.getChat().then((chat) => chat.delete()))
-      .catch(console.log),
-    client
-      .sendMessage(msgFrom.replace("+", ""), media, {
-        sendMediaAsSticker: true,
-        stickerAuthor: "figurinhaszap.com",
-        stickerCategories: [],
-        stickerName: "",
-      })
-      .then((message) => message.getChat().then((chat) => chat.delete()))
-      .catch(console.log),
-  ]);
+  await client
+    .sendMessage(msgFrom, media, {
+      sendMediaAsSticker: true,
+      stickerAuthor: "figurinhaszap.com",
+      stickerCategories: [],
+      stickerName: "",
+    })
+    .then((message) => message.getChat().then((chat) => chat.delete()))
+    .catch(console.log);
 };
 
 export const sendMessage = async (msgFrom: string, message: string) => {
-  await Promise.race([
-    await client
-      .sendMessage(msgFrom, message)
-      .then((chat) => {
-        return chat.delete();
-      })
-      .catch(console.log),
-
-    await client
-      .sendMessage(msgFrom.replace("+", ""), message)
-      .then((chat) => {
-        return chat.delete();
-      })
-      .catch(console.log),
-  ]);
+  await client
+    .sendMessage(msgFrom, message)
+    .then((chat) => {
+      return chat.delete();
+    })
+    .catch(console.log);
 };
 
-export const ClientInitialize = () =>
-  client.initialize().catch(() => {
-    console.log("===================");
-  });
+export const ClientInitialize = () => client.initialize();
