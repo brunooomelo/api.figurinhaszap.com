@@ -17,12 +17,7 @@ export const generateMessageWithToken = (
   text: string,
   config: Record<KeyMessage, string>
 ) => {
-  Object.keys(config).forEach((key) => {
-    const regex = new RegExp(key, "g");
-    const value = config[key as KeyMessage];
-    if (value) {
-      text = text.replace(regex, value);
-    }
-  });
+  text = text.replace(/\[token_verification\]/g, config['[token_verification]'])
+  text = text.replace(/\[platform_name\]/g, config['[platform_name]'])
   return text;
 };
