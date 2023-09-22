@@ -13,6 +13,7 @@ import { prisma } from "./lib/prisma";
 import { generateToken } from "./util/generateToken";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
+import { generateMessageWithToken, message } from "./util/generateMessage";
 
 const app = fastify({
   logger: true,
@@ -24,6 +25,8 @@ app.register(fastifyMultipart, {
     fileSize: 1_048_576 * 25, // 25mb
   },
 });
+
+const PLATFORM_NAME = "Figurinhaszap";
 
 const formatPhoneForWhatsapp = (phone: string) =>
   `+${phone.replace("+", "")}@c.us`;
@@ -99,6 +102,15 @@ app.post("/stickers", async (request, reply) => {
       });
     }
 
+    await prisma.analytics.update({
+      where: {
+        kind: "analytics",
+      },
+      data: {
+        count: { increment: 1 },
+      },
+    });
+
     await generateAndSendSticker(
       formatPhoneForWhatsapp(user.whatsapp),
       compressed.data,
@@ -150,7 +162,10 @@ app.post("/login", async (request, reply) => {
 
       await sendMessage(
         formatPhoneForWhatsapp(whatsappSanitied),
-        `Somos a Figurinhaszap precisamos validar seu numero,\n segue o PIN para valida: *${token}*`
+        generateMessageWithToken(message, {
+          "[platform_name]": PLATFORM_NAME,
+          "[token_verification]": token,
+        })
       );
       return reply.status(200).send(user);
     }
@@ -168,7 +183,10 @@ app.post("/login", async (request, reply) => {
     });
     await sendMessage(
       formatPhoneForWhatsapp(whatsappSanitied),
-      `Somos a Figurinhaszap precisamos validar seu numero,\n segue o PIN para valida: ${token}`
+      generateMessageWithToken(message, {
+        "[platform_name]": PLATFORM_NAME,
+        "[token_verification]": token,
+      })
     );
 
     return reply.status(200).send(user);
@@ -313,16 +331,37 @@ app.get("/session", async (request, reply) => {
   }
 });
 
+app.get("/stickers/count", async (request, reply) => {
+  const analytic = await prisma.analytics.findUnique({
+    where: {
+      kind: "analytics",
+    },
+  });
+  return reply.status(200).send({
+    data: analytic?.count || null,
+    message: "OK",
+  });
+});
+
 app.get("/hc", (request, reply) => {
   return reply.status(200).send({
     message: "OK",
   });
 });
 
-ClientInitialize().then(() =>
+ClientInitialize().then(async () => {
+  await prisma.analytics.upsert({
+    where: {
+      kind: "analytics",
+    },
+    create: {
+      kind: "analytics",
+    },
+    update: {},
+  });
   app
     .listen({
       port: environments.port,
     })
-    .then(() => console.log("HTTP server running"))
-);
+    .then(() => console.log("HTTP server running"));
+});

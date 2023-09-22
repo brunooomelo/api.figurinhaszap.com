@@ -18,3 +18,9 @@ model User {
   createdAt       DateTime  @default(now())
 }
 
+model Analytics {
+  id              String    @id @default(uuid())
+  kind String @unique
+  count Int @default(0)
+}
+

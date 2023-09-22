@@ -45,34 +45,23 @@ export const generateAndSendSticker = async (
   const media = new MessageMedia("image/webp", fileSharp, "banner.webp");
 
   await Promise.race([
-    await client
-      .sendMessage(msgFrom, "Aguarde o sticker esta sendo gerado...")
-      .then(() => {
-        return client
-          .sendMessage(msgFrom, media, {
-            sendMediaAsSticker: true,
-            stickerAuthor: "figurinhaszap.com",
-            stickerCategories: [],
-            stickerName: "",
-          })
-          .then((chat) => chat.delete());
+    client
+      .sendMessage(msgFrom, media, {
+        sendMediaAsSticker: true,
+        stickerAuthor: "figurinhaszap.com",
+        stickerCategories: [],
+        stickerName: "",
       })
+      .then((message) => message.getChat().then((chat) => chat.delete()))
       .catch(console.log),
-    await client
-      .sendMessage(
-        msgFrom.replace("+", ""),
-        "Aguarde o sticker esta sendo gerado..."
-      )
-      .then(() => {
-        return client
-          .sendMessage(msgFrom.replace("+", ""), media, {
-            sendMediaAsSticker: true,
-            stickerAuthor: "figurinhaszap.com",
-            stickerCategories: [],
-            stickerName: "",
-          })
-          .then((chat) => chat.delete());
+    client
+      .sendMessage(msgFrom.replace("+", ""), media, {
+        sendMediaAsSticker: true,
+        stickerAuthor: "figurinhaszap.com",
+        stickerCategories: [],
+        stickerName: "",
       })
+      .then((message) => message.getChat().then((chat) => chat.delete()))
       .catch(console.log),
   ]);
 };
@@ -94,4 +83,5 @@ export const sendMessage = async (msgFrom: string, message: string) => {
       .catch(console.log),
   ]);
 };
+
 export const ClientInitialize = () => client.initialize();
