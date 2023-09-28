@@ -33,7 +33,7 @@ const formatPhoneForWhatsapp = (phone: string) =>
 
 app.post("/stickers", async (request, reply) => {
   try {
-    const data = await (request.body as unknown as any).file
+    const data = await (request.body as unknown as any).file;
 
     const body = Object.fromEntries(
       Object.keys(request.body as any).map((key) => [
@@ -50,7 +50,7 @@ app.post("/stickers", async (request, reply) => {
       name: z.string().nullable(),
     });
 
-    const { x, y, name, width,height } = bodySchema.parse(body);
+    const { x, y, name, width, height } = bodySchema.parse(body);
     const token = request.headers["x-auth-token"] as string;
     if (!token) {
       return reply.status(401).send({ error: "Você não está autenticado." });
@@ -98,13 +98,11 @@ app.post("/stickers", async (request, reply) => {
 
     const imageBuffer = await data.toBuffer();
     const isGif = [".webp", ".gif"].includes(extension);
-    const isPNG = extension.includes(".png");
-
-    const isAnimated = isPNG || isGif;
+    const isAnimated = isGif;
 
     const metadata = await sharp(imageBuffer).metadata();
 
-    const imageShaped = sharp(imageBuffer, { animated: isAnimated})
+    const imageShaped = sharp(imageBuffer, { animated: isAnimated });
 
     if (
       (metadata.width && metadata.width > 512) ||
@@ -112,10 +110,9 @@ app.post("/stickers", async (request, reply) => {
     ) {
       const extractX = Math.floor((x / 100) * metadata.width!);
       const extractY = Math.floor((y / 100) * metadata.height!);
-      const extractWidth = Math.floor((width / 100) *metadata.width!);
+      const extractWidth = Math.floor((width / 100) * metadata.width!);
       const extractHeight = Math.floor((height / 100) * metadata.height!);
-      imageShaped
-      .extract({
+      imageShaped.extract({
         left: extractX,
         top: extractY,
         width: extractWidth,
@@ -123,7 +120,13 @@ app.post("/stickers", async (request, reply) => {
       });
     }
 
-    const fileSharped = imageShaped.resize(512).webp({ quality: 90 });
+    const fileSharped = imageShaped.resize(512);
+
+    if (isAnimated) {
+      fileSharped.gif();
+    } else {
+      fileSharped.webp({ quality: 80 });
+    }
     const compressed = await fileSharped.toBuffer({ resolveWithObject: true });
 
     if (compressed.info.size >= 200000) {
@@ -154,7 +157,7 @@ app.post("/stickers", async (request, reply) => {
       message: "Figurinha enviado",
     });
   } catch (error) {
-    console.log(error)
+    console.log(error);
     return reply.status(200).send({ error: error });
   }
 });
@@ -364,9 +367,9 @@ ClientInitialize().then(async () => {
     },
     update: {},
   });
-app
-  .listen({
-    port: environments.port,
-  })
-  .then(() => console.log("HTTP server running PORT: " + environments.port));
+  app
+    .listen({
+      port: environments.port,
+    })
+    .then(() => console.log("HTTP server running PORT: " + environments.port));
 });
