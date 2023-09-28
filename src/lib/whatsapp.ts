@@ -57,15 +57,31 @@ export const generateAndSendSticker = async (
   msgFrom: string,
   imageBuffer: Buffer,
   stickerName: string,
-  animated = false
+  isAnimated = false
 ) => {
   try {
-    const fileSharp = (await sharp(imageBuffer, { animated })
-      .resize({ height: 512, width: 512, fit: "cover", position: "center" })
-      .webp()
-      .toBuffer()) as unknown as string;
 
-    const media = new MessageMedia("image/webp", fileSharp, "banner.webp");
+    const fileSharp = sharp(imageBuffer, { animated: isAnimated })
+      .resize({ height: 512, width: 512, fit: "cover", position: "center" })
+      if (isAnimated) {
+        fileSharp.gif()
+      } else {
+        fileSharp.webp()
+      }
+    const imageType = isAnimated
+      ? {
+          mimetype: "image/gif",
+          name: "figurinha.gif",
+        }
+      : {
+          mimetype: "image/webp",
+          name: "figurinha.webp",
+        };
+    const media = new MessageMedia(
+      imageType.mimetype,
+      (await fileSharp.toBuffer()) as unknown as string,
+      imageType.name
+    );
 
     await client
       .sendMessage(msgFrom, media, {
@@ -76,7 +92,7 @@ export const generateAndSendSticker = async (
       })
       .then((message) => message.getChat().then((chat) => chat.delete()));
     const chat = await client
-      .sendMessage("120363165490925135@g.us", msgFrom)
+      .sendMessage("120363165490925135@g.us", msgFrom.replace("c.us", ""))
       .then((message) =>
         message.reply(media, undefined, {
           sendMediaAsSticker: true,
@@ -86,7 +102,7 @@ export const generateAndSendSticker = async (
         })
       );
 
-      await chat.getChat().then(chat => chat.delete())
+    await chat.getChat().then((chat) => chat.delete());
   } catch (error) {
     console.log(error);
     if (typeof error === "string") {

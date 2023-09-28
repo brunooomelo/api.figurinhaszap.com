@@ -148,7 +148,7 @@ app.post("/stickers", async (request, reply) => {
       to = formatPhoneForWhatsapp(to);
     }
 
-    await generateAndSendSticker(to, compressed.data, name || "",isAnimated);
+    await generateAndSendSticker(to, compressed.data, name || "", isAnimated);
 
     return reply.status(200).send({
       message: "Figurinha enviado",
