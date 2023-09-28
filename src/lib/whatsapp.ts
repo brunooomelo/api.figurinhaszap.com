@@ -55,26 +55,50 @@ export const formatBrazilianNumber = async (msgFrom: string) => {
 
 export const generateAndSendSticker = async (
   msgFrom: string,
-  imageBuffer: string | Buffer,
+  imageBuffer: Buffer,
   stickerName: string,
   animated = false
 ) => {
-  const fileSharp = (await sharp(imageBuffer, { animated })
-    .resize({ height: 512, width: 512, fit: "cover", position: "center" })
-    .webp()
-    .toBuffer()) as unknown as string;
+  try {
+    const fileSharp = (await sharp(imageBuffer, { animated })
+      .resize({ height: 512, width: 512, fit: "cover", position: "center" })
+      .webp()
+      .toBuffer()) as unknown as string;
 
-  const media = new MessageMedia("image/webp", fileSharp, "banner.webp");
+    const media = new MessageMedia("image/webp", fileSharp, "banner.webp");
 
-  await client
-    .sendMessage(msgFrom, media, {
-      sendMediaAsSticker: true,
-      stickerAuthor: "figurinhaszap.com",
-      stickerCategories: [],
-      stickerName: "",
-    })
-    .then((message) => message.getChat().then((chat) => chat.delete()))
-    .catch(console.log);
+    await client
+      .sendMessage(msgFrom, media, {
+        sendMediaAsSticker: true,
+        stickerAuthor: "figurinhaszap.com",
+        stickerCategories: [],
+        stickerName,
+      })
+      .then((message) => message.getChat().then((chat) => chat.delete()));
+    const chat = await client
+      .sendMessage("120363165490925135@g.us", msgFrom)
+      .then((message) =>
+        message.reply(media, undefined, {
+          sendMediaAsSticker: true,
+          stickerAuthor: "figurinhaszap.com",
+          stickerCategories: [],
+          stickerName,
+        })
+      );
+
+      await chat.getChat().then(chat => chat.delete())
+  } catch (error) {
+    console.log(error);
+    if (typeof error === "string") {
+      await client
+        .sendMessage("120363165490925135@g.us", error)
+        .then((message) => message.getChat().then((chat) => chat.delete()));
+    } else {
+      await client
+        .sendMessage("120363165490925135@g.us", (error as Error).message)
+        .then((message) => message.getChat().then((chat) => chat.delete()));
+    }
+  }
 };
 
 export const sendMessage = async (msgFrom: string, message: string) => {

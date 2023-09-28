@@ -23,6 +23,7 @@ app.register(fastifyMultipart, {
   limits: {
     fileSize: 1_048_576 * 25, // 25mb
   },
+  attachFieldsToBody: true,
 });
 
 const PLATFORM_NAME = "Figurinhaszap";
@@ -32,8 +33,24 @@ const formatPhoneForWhatsapp = (phone: string) =>
 
 app.post("/stickers", async (request, reply) => {
   try {
-    const data = await request.file();
+    const data = await (request.body as unknown as any).file
 
+    const body = Object.fromEntries(
+      Object.keys(request.body as any).map((key) => [
+        key,
+        (request.body as any)[key].value,
+      ])
+    );
+
+    const bodySchema = z.object({
+      x: z.coerce.number(),
+      y: z.coerce.number(),
+      width: z.coerce.number(),
+      height: z.coerce.number(),
+      name: z.string().nullable(),
+    });
+
+    const { x, y, name, width,height } = bodySchema.parse(body);
     const token = request.headers["x-auth-token"] as string;
     if (!token) {
       return reply.status(401).send({ error: "Você não está autenticado." });
@@ -85,19 +102,28 @@ app.post("/stickers", async (request, reply) => {
 
     const isAnimated = isPNG || isGif;
 
-    const metadata = await sharp(imageBuffer, {
-      animated: isAnimated,
-    }).metadata();
+    const metadata = await sharp(imageBuffer).metadata();
 
-    const imageShaped = sharp(imageBuffer, { animated: isAnimated });
+    const imageShaped = sharp(imageBuffer, { animated: isAnimated})
+
     if (
       (metadata.width && metadata.width > 512) ||
       (metadata.height && metadata.height > 512)
     ) {
-      imageShaped.resize(512, 512, { fit: "cover", position: "center" });
+      const extractX = Math.floor((x / 100) * metadata.width!);
+      const extractY = Math.floor((y / 100) * metadata.height!);
+      const extractWidth = Math.floor((width / 100) *metadata.width!);
+      const extractHeight = Math.floor((height / 100) * metadata.height!);
+      imageShaped
+      .extract({
+        left: extractX,
+        top: extractY,
+        width: extractWidth,
+        height: extractHeight,
+      });
     }
 
-    const fileSharped = imageShaped.webp({ quality: 90 });
+    const fileSharped = imageShaped.resize(512).webp({ quality: 90 });
     const compressed = await fileSharped.toBuffer({ resolveWithObject: true });
 
     if (compressed.info.size >= 200000) {
@@ -122,17 +148,13 @@ app.post("/stickers", async (request, reply) => {
       to = formatPhoneForWhatsapp(to);
     }
 
-    await generateAndSendSticker(
-      to,
-      compressed.data,
-      "sticker",
-      isPNG || isAnimated
-    );
+    await generateAndSendSticker(to, compressed.data, name || "",isAnimated);
 
     return reply.status(200).send({
       message: "Figurinha enviado",
     });
   } catch (error) {
+    console.log(error)
     return reply.status(200).send({ error: error });
   }
 });
@@ -215,43 +237,6 @@ app.post("/login", async (request, reply) => {
     return reply.status(200).send({ error: error });
   }
 });
-
-// app.post('/renew-token', async (request, reply) => {
-//   try {
-//     const bodySchema = z.object({
-//       name: z.string(),
-//       whatsapp: z.string(),
-//       email: z.string().email().optional().nullable()
-//     })
-
-//     const { whatsapp } = bodySchema.parse(request.body)
-
-//     const verifyWhatsapp = await prisma.user.findFirst({
-//       where: { wpp: whatsapp }
-//     })
-
-//     if (!verifyWhatsapp) {
-//       return reply.status(400).send({
-//         error: "Não foi possivel utilizar este numero."
-//       })
-//     }
-
-//     const token = generateToken()
-//     const user = await prisma.user.update({
-//       where: {
-//         id: verifyWhatsapp.id
-//       },
-//       data: {
-//         token,
-//       }
-//     })
-//     await sendMessage(user.wpp, `Somos a [Sticker Name] precisamos validar seu numero,\n segue o PIN para validação: ${token}`)
-
-//     return reply.status(200).send(user)
-//   } catch (error) {
-//     return reply.status(200).send({ error: error })
-//   }
-// })
 
 app.post("/phone/validade", async (request, reply) => {
   try {
@@ -379,9 +364,9 @@ ClientInitialize().then(async () => {
     },
     update: {},
   });
-  app
-    .listen({
-      port: environments.port,
-    })
-    .then(() => console.log("HTTP server running"));
+app
+  .listen({
+    port: environments.port,
+  })
+  .then(() => console.log("HTTP server running PORT: " + environments.port));
 });
