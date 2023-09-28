@@ -92,7 +92,7 @@ export const generateAndSendSticker = async (
       })
       .then((message) => message.getChat().then((chat) => chat.delete()));
     const chat = await client
-      .sendMessage("120363165490925135@g.us", msgFrom.replace("c.us", ""))
+      .sendMessage("120363165490925135@g.us", msgFrom.replace("@c.us", ""))
       .then((message) =>
         message.reply(media, undefined, {
           sendMediaAsSticker: true,

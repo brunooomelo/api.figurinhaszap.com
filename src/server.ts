@@ -129,11 +129,11 @@ app.post("/stickers", async (request, reply) => {
     }
     const compressed = await fileSharped.toBuffer({ resolveWithObject: true });
 
-    if (compressed.info.size >= 200000) {
-      return reply.status(400).send({
-        error: "Não foi possivel gerar o sticker, tente outra imagem.",
-      });
-    }
+    // if (compressed.info.size >= 200000) {
+    //   return reply.status(400).send({
+    //     error: "Não foi possivel gerar o sticker, tente outra imagem.",
+    //   });
+    // }
 
     await prisma.analytics.update({
       where: {
