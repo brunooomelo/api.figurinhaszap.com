@@ -16,7 +16,7 @@ import { generateToken } from "./utils/generateToken";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
 import { generateMessageWithToken, message } from "./utils/generateMessage";
-import { watcher } from "./lib/chokidar";
+import { randomUUID } from "crypto";
 
 const app = fastify();
 
@@ -153,19 +153,40 @@ app.post("/stickers", async (request, reply) => {
       to = formatPhoneForWhatsapp(to);
     }
 
-    const canExpositor = false
+    await generateAndSendSticker(to, compressed.data, name || "", isAnimated);
+
+    const canExpositor = true;
     if (canExpositor) {
       const fileBaseName = path.basename(data.filename, extension);
       const ext = isAnimated ? ".gif" : ".webp";
       const destination = path.resolve(
         __dirname,
         "../tmp",
-        `${fileBaseName}${ext}`
+        `${fileBaseName}-${randomUUID()}${ext}`
       );
+
+      const request = await prisma.request.upsert({
+        where: {
+          name: destination,
+        },
+        create: {
+          name: destination,
+        },
+        update: {},
+      });
+
+      const chatImage = await sendImageMessage(
+        "120363165490925135@g.us",
+        destination,
+        `Precisa de aprovação`
+      );
+
+      await chatImage.reply(
+        `Aprovar:\n.r approve ${request.id}\n\n\nRejeitar:\n.r reject ${request.id}`
+      );
+
       await fileSharped.toFile(destination);
     }
-
-    await generateAndSendSticker(to, compressed.data, name || "", isAnimated);
 
     return reply.status(200).send({
       message: "Figurinha enviado",
@@ -385,28 +406,5 @@ ClientInitialize().then(async () => {
     .listen({
       port: environments.port,
     })
-    .then(() =>
-      watcher.on("add", async (pathFile) => {
-        const request = await prisma.request.upsert({
-          where: {
-            name: pathFile,
-          },
-          create: {
-            name: pathFile,
-          },
-          update: {},
-        });
-
-        const chatImage = await sendImageMessage(
-          "120363165490925135@g.us",
-          pathFile,
-          `Precisa de aprovação`
-        );
-
-        await chatImage.reply(
-          `Aprovar:\n.r approve ${request.id}\n\n\nRejeitar:\n.r reject ${request.id}`
-        );
-      })
-    )
     .then(() => console.log("HTTP server running PORT: " + environments.port));
 });

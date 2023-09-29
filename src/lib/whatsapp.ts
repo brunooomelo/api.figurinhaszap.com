@@ -12,7 +12,16 @@ const removeImage = promisify(fs.unlink);
 const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-accelerated-2d-canvas",
+      "--no-first-run",
+      "--no-zygote",
+      "--single-process", // <- this one doesn't works in Windows
+      "--disable-gpu",
+    ],
     headless: environments.headless,
     ...(!!environments.executablePath && {
       executablePath: environments.executablePath,
@@ -28,8 +37,6 @@ client.on("qr", (qr) => {
 client.on("ready", () => {
   console.log("Client is ready!");
 });
-
-client.on("change_state", console.log);
 
 client.on("message_create", async (msg) => {
   if (msg.body.startsWith(".")) {
@@ -64,7 +71,22 @@ client.on("message_create", async (msg) => {
   await chat.delete();
 });
 
-client.on("disconnected", () => {});
+client.on("authenticated", () => {
+  console.log("© Figurinhas Bot Autenticado");
+});
+
+client.on("auth_failure", function () {
+  console.error("© Figurinhas Bot Falha na autenticação");
+});
+
+client.on("change_state", (state) => {
+  console.log("© Figurinhas Bot Status de conexão: ", state);
+});
+
+client.on("disconnected", (reason) => {
+  console.log("© Figurinhas Bot Cliente desconectado", reason);
+  client.initialize();
+});
 
 export const formatBrazilianNumber = async (msgFrom: string) => {
   let to = msgFrom.replace("+", "");
