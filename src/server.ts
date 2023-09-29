@@ -4,6 +4,7 @@ import {
   ClientInitialize,
   formatBrazilianNumber,
   generateAndSendSticker,
+  sendImageMessage,
   sendMessage,
 } from "./lib/whatsapp";
 import { environments } from "./lib/environment";
@@ -15,6 +16,7 @@ import { generateToken } from "./utils/generateToken";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
 import { generateMessageWithToken, message } from "./utils/generateMessage";
+import { watcher } from "./lib/chokidar";
 
 const app = fastify();
 
@@ -48,9 +50,10 @@ app.post("/stickers", async (request, reply) => {
       width: z.coerce.number(),
       height: z.coerce.number(),
       name: z.string().nullable(),
+      canExpositor: z.boolean().nullable(),
     });
 
-    const { x, y, name, width, height } = bodySchema.parse(body);
+    const { x, y, name, width, height, canExpositor } = bodySchema.parse(body);
     const token = request.headers["x-auth-token"] as string;
     if (!token) {
       return reply.status(401).send({ error: "Você não está autenticado." });
@@ -120,20 +123,20 @@ app.post("/stickers", async (request, reply) => {
       });
     }
 
-    const fileSharped = imageShaped.resize(512);
+    let fileSharped = imageShaped.resize(512);
 
     if (isAnimated) {
-      fileSharped.gif();
+      fileSharped = fileSharped.gif();
     } else {
-      fileSharped.webp({ quality: 80 });
+      fileSharped = fileSharped.webp({ quality: 80 });
     }
     const compressed = await fileSharped.toBuffer({ resolveWithObject: true });
 
-    // if (compressed.info.size >= 200000) {
-    //   return reply.status(400).send({
-    //     error: "Não foi possivel gerar o sticker, tente outra imagem.",
-    //   });
-    // }
+    if (compressed.info.size >= 200000) {
+      return reply.status(400).send({
+        error: "Não foi possivel gerar o sticker, tente outra imagem.",
+      });
+    }
 
     await prisma.analytics.update({
       where: {
@@ -149,6 +152,17 @@ app.post("/stickers", async (request, reply) => {
       to = await formatBrazilianNumber(user.whatsapp);
     } else {
       to = formatPhoneForWhatsapp(to);
+    }
+
+    if (canExpositor) {
+      const fileBaseName = path.basename(data.filename, extension);
+      const ext = isAnimated ? ".gif" : ".webp";
+      const destination = path.resolve(
+        __dirname,
+        "../tmp",
+        `${fileBaseName}${ext}`
+      );
+      await fileSharped.toFile(destination);
     }
 
     await generateAndSendSticker(to, compressed.data, name || "", isAnimated);
@@ -371,5 +385,28 @@ ClientInitialize().then(async () => {
     .listen({
       port: environments.port,
     })
+    .then(() =>
+      watcher.on("add", async (pathFile) => {
+        const request = await prisma.request.upsert({
+          where: {
+            name: pathFile,
+          },
+          create: {
+            name: pathFile,
+          },
+          update: {},
+        });
+
+        const chatImage = await sendImageMessage(
+          "120363165490925135@g.us",
+          pathFile,
+          `Precisa de aprovação`
+        );
+
+        await chatImage.reply(
+          `Aprovar:\n.r approve ${request.id}\n\n\nRejeitar:\n.r reject ${request.id}`
+        );
+      })
+    )
     .then(() => console.log("HTTP server running PORT: " + environments.port));
 });

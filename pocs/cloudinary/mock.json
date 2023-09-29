@@ -1,0 +1,23 @@
+{
+  "asset_id": "802ad77f97dad427bbb4ee4c379455fb",
+  "public_id": "p1lkliv2jcvzwaa5ef4t",
+  "version": 1695935751,
+  "version_id": "cfeabc9626c90006790064a31303ca30",
+  "signature": "1dabc5852880d3cd8a0f0eb3ed3e99cdc89933ed",
+  "width": 1099,
+  "height": 1099,
+  "format": "webp",
+  "resource_type": "image",
+  "created_at": "2023-09-28T21:15:51Z",
+  "tags": [],
+  "pages": 1,
+  "bytes": 32466,
+  "type": "upload",
+  "etag": "9070babb81ba7d1e78349e2458069f73",
+  "placeholder": false,
+  "url": "http://res.cloudinary.com/debbupyqo/image/upload/v1695935751/p1lkliv2jcvzwaa5ef4t.webp",
+  "secure_url": "https://res.cloudinary.com/debbupyqo/image/upload/v1695935751/p1lkliv2jcvzwaa5ef4t.webp",
+  "folder": "",
+  "original_filename": "test",
+  "api_key": "425692176482321"
+}

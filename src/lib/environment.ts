@@ -1,21 +1,28 @@
-import dotenv from 'dotenv'
-dotenv.config()
-import { z } from "zod"
+import dotenv from "dotenv";
+dotenv.config();
+import { z, infer } from "zod";
 
 const schema = z.object({
-  origin: z.string().nullable().transform((value) => value?.split(',')),
+  origin: z
+    .string()
+    .nullable()
+    .transform((value) => value?.split(",")),
   executablePath: z.string().nullable(),
   headless: z.coerce.boolean().default(false),
   port: z.coerce.number().nullable(),
-  secret: z.string()
-})
+  secret: z.string(),
+  cloudinarySecret: z.string(),
+  cloudinaryKey: z.string(),
+});
 
-const processEnv = schema.parse(process.env)
+const processEnv = schema.parse(process.env);
 
 export const environments = {
-  origin: process.env.NODE_ENV === 'development'? ['*']: processEnv.origin,
+  origin: process.env.NODE_ENV === "development" ? ["*"] : processEnv.origin,
   executablePath: processEnv.executablePath,
   headless: processEnv.headless,
   port: processEnv.port || 3333,
-  secret: processEnv.secret
-}
+  secret: processEnv.secret,
+  cloudinaryKey: processEnv.cloudinaryKey,
+  cloudinarySecret: processEnv.cloudinarySecret,
+};

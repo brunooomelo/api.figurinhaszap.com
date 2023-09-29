@@ -2,6 +2,12 @@ import sharp from "sharp";
 import qrcode from "qrcode-terminal";
 import { Client, LocalAuth, MessageMedia } from "whatsapp-web.js";
 import { environments } from "./environment";
+import { prisma } from "./prisma";
+import { upload } from "./cloudinary";
+import fs from "fs";
+import { promisify } from "util";
+
+const removeImage = promisify(fs.unlink);
 
 const client = new Client({
   authStrategy: new LocalAuth(),
@@ -26,9 +32,36 @@ client.on("ready", () => {
 client.on("change_state", console.log);
 
 client.on("message_create", async (msg) => {
-  if (msg.body == "!ping") {
-    msg.reply("pong");
+  if (msg.body.startsWith(".")) {
+    const command = msg.body.slice(1).trim().split(/ +/).shift()?.toLowerCase();
+    const [action, id] = msg.body.trim().split(" ").slice(1);
+
+    if (command === "r") {
+      if (!action || !id) return;
+      if (["approve", "reject"].includes(action)) {
+        const fileRequest = await prisma.request.findFirst({
+          where: { id },
+        });
+        if (!fileRequest) return;
+        if (action === "approve") {
+          const response = await upload(fileRequest.name);
+          await msg.reply(`APROVADO\n
+          ID: ${response?.public_id}\n
+          URL: ${response?.url}`);
+          return;
+        }
+
+        await removeImage(fileRequest.name);
+
+        await msg.reply(`APAGADO\n
+        PATH: ${fileRequest.name}`);
+
+        return;
+      }
+    }
   }
+  const chat = await msg.getChat();
+  await chat.delete();
 });
 
 client.on("disconnected", () => {});
@@ -60,14 +93,17 @@ export const generateAndSendSticker = async (
   isAnimated = false
 ) => {
   try {
-
-    const fileSharp = sharp(imageBuffer, { animated: isAnimated })
-      .resize({ height: 512, width: 512, fit: "cover", position: "center" })
-      if (isAnimated) {
-        fileSharp.gif()
-      } else {
-        fileSharp.webp()
-      }
+    const fileSharp = sharp(imageBuffer, { animated: isAnimated }).resize({
+      height: 512,
+      width: 512,
+      fit: "cover",
+      position: "center",
+    });
+    if (isAnimated) {
+      fileSharp.gif();
+    } else {
+      fileSharp.webp();
+    }
     const imageType = isAnimated
       ? {
           mimetype: "image/gif",
@@ -124,6 +160,15 @@ export const sendMessage = async (msgFrom: string, message: string) => {
       return chat.delete();
     })
     .catch(console.log);
+};
+
+export const sendImageMessage = async (
+  msgFrom: string,
+  imagePath: string,
+  message: string
+) => {
+  const media = MessageMedia.fromFilePath(imagePath);
+  return client.sendMessage(msgFrom, media, { caption: message });
 };
 
 export const ClientInitialize = () => client.initialize();
