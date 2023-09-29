@@ -177,8 +177,8 @@ app.post("/stickers", async (request, reply) => {
 
       const chatImage = await sendImageMessage(
         "120363165490925135@g.us",
-        `Precisa de aprovação`,
         destination,
+        `Precisa de aprovação`,
       );
 
       await chatImage.reply(
