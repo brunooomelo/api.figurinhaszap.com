@@ -50,10 +50,9 @@ app.post("/stickers", async (request, reply) => {
       width: z.coerce.number(),
       height: z.coerce.number(),
       name: z.string().nullable(),
-      canExpositor: z.boolean().nullable(),
     });
 
-    const { x, y, name, width, height, canExpositor } = bodySchema.parse(body);
+    const { x, y, name, width, height } = bodySchema.parse(body);
     const token = request.headers["x-auth-token"] as string;
     if (!token) {
       return reply.status(401).send({ error: "Você não está autenticado." });
@@ -154,6 +153,7 @@ app.post("/stickers", async (request, reply) => {
       to = formatPhoneForWhatsapp(to);
     }
 
+    const canExpositor = false
     if (canExpositor) {
       const fileBaseName = path.basename(data.filename, extension);
       const ext = isAnimated ? ".gif" : ".webp";
