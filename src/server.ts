@@ -18,6 +18,7 @@ import jwt from "jsonwebtoken";
 import { generateMessageWithToken, message } from "./utils/generateMessage";
 import { randomUUID } from "crypto";
 import { getMetadata } from "./lib/sharp";
+import { MessageMedia } from "whatsapp-web.js";
 
 const app = fastify();
 
@@ -123,7 +124,9 @@ app.post("/stickers", async (request, reply) => {
     }
     if (isAnimated) {
       console.log("generate gif");
-      fileSharped = await fileSharped.gif();
+      fileSharped = await fileSharped.gif({
+        effort: 8,
+      });
     }
     if (!isAnimated && !isPNG) {
       console.log("generate webp");
@@ -132,7 +135,7 @@ app.post("/stickers", async (request, reply) => {
     const compressed = await fileSharped.toBuffer({ resolveWithObject: true });
 
     console.log(compressed.info);
-    if (compressed.info.size >= 600000) {
+    if (compressed.info.size >= 200000) {
       return reply.status(400).send({
         error: "Não foi possivel gerar o sticker, tente outra imagem.",
       });
@@ -161,14 +164,28 @@ app.post("/stickers", async (request, reply) => {
       "../tmp",
       `${fileBaseName}-${randomUUID()}${ext}`
     );
-    await generateAndSendSticker(
-      to,
-      compressed.data as unknown as string,
-      name || "",
-      extension,
-      isAnimated,
-      destination
+    const imageType = isPNG
+      ? {
+          mimetype: "image/png",
+          name: "figurinha.png",
+        }
+      : isAnimated
+      ? {
+          mimetype: "image/gif",
+          name: "figurinha.gif",
+        }
+      : {
+          mimetype: "image/webp",
+          name: "figurinha.webp",
+        };
+
+    console.log(imageType);
+    const media = new MessageMedia(
+      imageBuffer.mimetype,
+      imageBuffer,
+      imageBuffer.name
     );
+    await generateAndSendSticker(to, media, name || "", destination);
 
     const canExpositor = true;
     if (canExpositor) {

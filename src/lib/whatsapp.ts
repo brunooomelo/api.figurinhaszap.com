@@ -109,33 +109,12 @@ export const formatBrazilianNumber = async (msgFrom: string) => {
 
 export const generateAndSendSticker = async (
   msgFrom: string,
-  imageBuffer: string,
+  media: MessageMedia,
   stickerName: string,
-  extension: string,
-  isAnimated = false,
   destination: string
 ) => {
   try {
-    const isPNG = extension === ".png";
-    const imageType = isPNG
-      ? {
-          mimetype: "image/png",
-          name: "figurinha.png",
-        }
-      : isAnimated
-      ? {
-          mimetype: "image/gif",
-          name: "figurinha.gif",
-        }
-      : {
-          mimetype: "image/webp",
-          name: "figurinha.webp",
-        };
-    const media = new MessageMedia(
-      imageType.mimetype,
-      imageBuffer,
-      imageType.name
-    );
+  
 
     await client
       .sendMessage(msgFrom, media, {
