@@ -17,13 +17,14 @@ import { z } from "zod";
 import jwt from "jsonwebtoken";
 import { generateMessageWithToken, message } from "./utils/generateMessage";
 import { randomUUID } from "crypto";
+import { getMetadata } from "./lib/sharp";
 
 const app = fastify();
 
 app.register(fastifyCors, { origin: "*" });
 app.register(fastifyMultipart, {
   limits: {
-    fileSize: 1_048_576 * 25, // 25mb
+    fileSize: 1_048_576 * 5, // 25mb
   },
   attachFieldsToBody: true,
 });
@@ -99,39 +100,39 @@ app.post("/stickers", async (request, reply) => {
     }
 
     const imageBuffer = await data.toBuffer();
-    const isGif = [".webp", ".gif"].includes(extension);
-    const isAnimated = isGif;
+    const isGif = [".gif"].includes(extension);
+    const isPNG = extension === ".png";
+    const isAnimated = isPNG ? false : isGif;
 
-    const metadata = await sharp(imageBuffer).metadata();
+    // const metadata = await getMetadata(imageBuffer);
 
-    const imageShaped = sharp(imageBuffer, { animated: isAnimated });
+    let fileSharped = await sharp(imageBuffer, {
+      animated: isAnimated,
+    })
+      .sharpen()
+      .resize(500, 500, {
+        fit: "inside",
+      })
+      .gif();
 
-    if (
-      (metadata.width && metadata.width > 512) ||
-      (metadata.height && metadata.height > 512)
-    ) {
-      const extractX = Math.floor((x / 100) * metadata.width!);
-      const extractY = Math.floor((y / 100) * metadata.height!);
-      const extractWidth = Math.floor((width / 100) * metadata.width!);
-      const extractHeight = Math.floor((height / 100) * metadata.height!);
-      imageShaped.extract({
-        left: extractX,
-        top: extractY,
-        width: extractWidth,
-        height: extractHeight,
-      });
+    console.log("isGif", isAnimated);
+    if (isPNG) {
+      console.log("generate png");
+
+      fileSharped = await fileSharped.png();
     }
-
-    let fileSharped = imageShaped.resize(512);
-
     if (isAnimated) {
-      fileSharped = fileSharped.gif();
-    } else {
-      fileSharped = fileSharped.webp({ quality: 80 });
+      console.log("generate gif");
+      fileSharped = await fileSharped.gif();
+    }
+    if (!isAnimated && !isPNG) {
+      console.log("generate webp");
+      fileSharped = await fileSharped.webp({ quality: 80 });
     }
     const compressed = await fileSharped.toBuffer({ resolveWithObject: true });
 
-    if (compressed.info.size >= 200000) {
+    console.log(compressed.info);
+    if (compressed.info.size >= 600000) {
       return reply.status(400).send({
         error: "Não foi possivel gerar o sticker, tente outra imagem.",
       });
@@ -153,38 +154,24 @@ app.post("/stickers", async (request, reply) => {
       to = formatPhoneForWhatsapp(to);
     }
 
-    await generateAndSendSticker(to, compressed.data, name || "", isAnimated);
+    const fileBaseName = path.basename(data.filename, extension);
+    const ext = isPNG ? ".png" : isAnimated ? ".gif" : ".webp";
+    const destination = path.resolve(
+      __dirname,
+      "../tmp",
+      `${fileBaseName}-${randomUUID()}${ext}`
+    );
+    await generateAndSendSticker(
+      to,
+      compressed.data as unknown as string,
+      name || "",
+      extension,
+      isAnimated,
+      destination
+    );
 
     const canExpositor = true;
     if (canExpositor) {
-      const fileBaseName = path.basename(data.filename, extension);
-      const ext = isAnimated ? ".gif" : ".webp";
-      const destination = path.resolve(
-        __dirname,
-        "../tmp",
-        `${fileBaseName}-${randomUUID()}${ext}`
-      );
-
-      const request = await prisma.request.upsert({
-        where: {
-          name: destination,
-        },
-        create: {
-          name: destination,
-        },
-        update: {},
-      });
-
-      const chatImage = await sendImageMessage(
-        "120363165490925135@g.us",
-        destination,
-        `Precisa de aprovação`,
-      );
-
-      await chatImage.reply(
-        `Aprovar:\n.r approve ${request.id}\n\n\nRejeitar:\n.r reject ${request.id}`
-      );
-
       await fileSharped.toFile(destination);
     }
 

@@ -1,4 +1,3 @@
-import sharp from "sharp";
 import qrcode from "qrcode-terminal";
 import { Client, LocalAuth, MessageMedia } from "whatsapp-web.js";
 import { environments } from "./environment";
@@ -38,12 +37,13 @@ client.on("ready", () => {
   console.log("Client is ready!");
 });
 
-client.on("message_create", async (msg) => {
+client.on("message", async (msg) => {
   if (msg.body.startsWith(".")) {
     const command = msg.body.slice(1).trim().split(/ +/).shift()?.toLowerCase();
     const [action, id] = msg.body.trim().split(" ").slice(1);
 
-    if (command === "r") {
+    console.log(msg, msg.fromMe)
+    if (command === "r" && !msg.fromMe) {
       if (!action || !id) return;
       if (["approve", "reject"].includes(action)) {
         const fileRequest = await prisma.request.findFirst({
@@ -62,7 +62,6 @@ client.on("message_create", async (msg) => {
 
         await msg.reply(`APAGADO\n
         PATH: ${fileRequest.name}`);
-
         return;
       }
     }
@@ -110,23 +109,20 @@ export const formatBrazilianNumber = async (msgFrom: string) => {
 
 export const generateAndSendSticker = async (
   msgFrom: string,
-  imageBuffer: Buffer,
+  imageBuffer: string,
   stickerName: string,
-  isAnimated = false
+  extension: string,
+  isAnimated = false,
+  destination: string
 ) => {
   try {
-    const fileSharp = sharp(imageBuffer, { animated: isAnimated }).resize({
-      height: 512,
-      width: 512,
-      fit: "cover",
-      position: "center",
-    });
-    if (isAnimated) {
-      fileSharp.gif();
-    } else {
-      fileSharp.webp();
-    }
-    const imageType = isAnimated
+    const isPNG = extension === ".png";
+    const imageType = isPNG
+      ? {
+          mimetype: "image/png",
+          name: "figurinha.png",
+        }
+      : isAnimated
       ? {
           mimetype: "image/gif",
           name: "figurinha.gif",
@@ -137,7 +133,7 @@ export const generateAndSendSticker = async (
         };
     const media = new MessageMedia(
       imageType.mimetype,
-      (await fileSharp.toBuffer()) as unknown as string,
+      imageBuffer,
       imageType.name
     );
 
@@ -149,18 +145,30 @@ export const generateAndSendSticker = async (
         stickerName,
       })
       .then((message) => message.getChat().then((chat) => chat.delete()));
-    const chat = await client
-      .sendMessage("120363165490925135@g.us", msgFrom.replace("@c.us", ""))
-      .then((message) =>
-        message.reply(media, undefined, {
-          sendMediaAsSticker: true,
-          stickerAuthor: "figurinhaszap.com",
-          stickerCategories: [],
-          stickerName,
-        })
-      );
 
-    await chat.getChat().then((chat) => chat.delete());
+      const request = await prisma.request.upsert({
+        where: {
+          name: destination,
+        },
+        create: {
+          name: destination,
+        },
+        update: {},
+      });
+
+      console.log(destination)
+      await client
+      .sendMessage("120363165490925135@g.us", media, {
+        sendMediaAsSticker: true,
+        stickerAuthor: "figurinhaszap.com",
+        stickerCategories: [],
+        stickerName,
+      })
+      .then((chat) =>
+        chat.reply(
+          `Aprovar:\n.r approve ${request.id}\n\n\nRejeitar:\n.r reject ${request.id}`
+        )
+      );
   } catch (error) {
     console.log(error);
     if (typeof error === "string") {
