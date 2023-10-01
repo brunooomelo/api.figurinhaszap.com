@@ -1,6 +1,7 @@
 import { fastify } from "fastify";
 import { fastifyCors } from "@fastify/cors";
 import {
+  ClientClose,
   ClientInitialize,
   formatBrazilianNumber,
   generateAndSendSticker,
@@ -17,7 +18,7 @@ import { z } from "zod";
 import jwt from "jsonwebtoken";
 import { generateMessageWithToken, message } from "./utils/generateMessage";
 import { randomUUID } from "crypto";
-import { getMetadata } from "./lib/sharp";
+import { compressImage, getMetadata } from "./lib/sharp";
 import { MessageMedia } from "whatsapp-web.js";
 
 const app = fastify();
@@ -101,43 +102,21 @@ app.post("/stickers", async (request, reply) => {
     }
 
     const imageBuffer = await data.toBuffer();
-    const isGif = [".gif"].includes(extension);
-    const isPNG = extension === ".png";
-    const isAnimated = isPNG ? false : isGif;
+    const imageName = data.filename;
 
-    // const metadata = await getMetadata(imageBuffer);
+    const compressedImaged = await compressImage(imageBuffer, imageName);
 
-    let fileSharped = await sharp(imageBuffer, {
-      animated: isAnimated,
-    })
-      .sharpen()
-      .resize(500, 500, {
-        fit: "inside",
-      })
-      .gif();
-
-    console.log("isGif", isAnimated);
-    if (isPNG) {
-      console.log("generate png");
-
-      fileSharped = await fileSharped.png();
-    }
-    if (isAnimated) {
-      console.log("generate gif");
-      fileSharped = await fileSharped.gif({
-        effort: 8,
+    if (!compressedImaged) {
+      return reply.status(400).send({
+        error: "Não foi possivel gerar a figurinha, tente outra imagem.",
       });
     }
-    if (!isAnimated && !isPNG) {
-      console.log("generate webp");
-      fileSharped = await fileSharped.webp({ quality: 80 });
-    }
-    const compressed = await fileSharped.toBuffer({ resolveWithObject: true });
 
-    console.log(compressed.info);
-    if (compressed.info.size >= 200000) {
+    const compressedMetadata = await getMetadata(compressedImaged.buffer);
+
+    if (compressedMetadata.size && compressedMetadata.size >= 200000) {
       return reply.status(400).send({
-        error: "Não foi possivel gerar o sticker, tente outra imagem.",
+        error: "Não foi possivel gerar a figurinha, tente outra imagem.",
       });
     }
 
@@ -158,38 +137,18 @@ app.post("/stickers", async (request, reply) => {
     }
 
     const fileBaseName = path.basename(data.filename, extension);
-    const ext = isPNG ? ".png" : isAnimated ? ".gif" : ".webp";
     const destination = path.resolve(
       __dirname,
       "../tmp",
-      `${fileBaseName}-${randomUUID()}${ext}`
+      `${fileBaseName}-${randomUUID()}${compressedImaged.extension}`
     );
-    const imageType = isPNG
-      ? {
-          mimetype: "image/png",
-          name: "figurinha.png",
-        }
-      : isAnimated
-      ? {
-          mimetype: "image/gif",
-          name: "figurinha.gif",
-        }
-      : {
-          mimetype: "image/webp",
-          name: "figurinha.webp",
-        };
 
-    console.log(imageType);
-    const media = new MessageMedia(
-      imageBuffer.mimetype,
-      imageBuffer,
-      imageBuffer.name
-    );
+    const media = new MessageMedia(compressedImaged.mimetype, compressedImaged.buffer.toString('base64'), compressedImaged.name);
     await generateAndSendSticker(to, media, name || "", destination);
 
     const canExpositor = true;
     if (canExpositor) {
-      await fileSharped.toFile(destination);
+      await sharp(compressedImaged.buffer).toFile(destination);
     }
 
     return reply.status(200).send({
@@ -395,6 +354,19 @@ app.get("/hc", (request, reply) => {
     message: "OK",
   });
 });
+
+
+process.on('SIGTERM', () => {
+  console.info('SIGTERM signal received.');
+  console.log('Closing http server.');
+  app.close(async () => {
+    console.log('Http server closed.');
+    await prisma.$disconnect()
+    await ClientClose()
+
+    process.exit()
+  });
+})
 
 ClientInitialize().then(async () => {
   await prisma.analytics.upsert({

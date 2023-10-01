@@ -181,3 +181,4 @@ export const sendImageMessage = async (
 };
 
 export const ClientInitialize = () => client.initialize();
+export const ClientClose = () => client.destroy()
