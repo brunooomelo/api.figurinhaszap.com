@@ -363,9 +363,8 @@ process.on('SIGTERM', () => {
     console.log('Http server closed.');
     await prisma.$disconnect()
     await ClientClose()
-
-    process.exit()
   });
+  process.exit()
 })
 
 ClientInitialize().then(async () => {
