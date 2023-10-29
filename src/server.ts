@@ -20,6 +20,7 @@ import { generateMessageWithToken, message } from "./utils/generateMessage";
 import { randomUUID } from "crypto";
 import { compressImage, getMetadata } from "./lib/sharp";
 import { MessageMedia } from "whatsapp-web.js";
+import { CalculateExtract } from "./utils/calculateExtract";
 
 const app = fastify();
 
@@ -106,18 +107,20 @@ app.post("/stickers", async (request, reply) => {
 
     const metadata = await sharp(imageBuffer).metadata();
 
-    const imageLessMinimun =
-      metadata.width &&
-      metadata.width <= 512 &&
-      metadata.height &&
-      metadata.height <= 512;
-
     const compressedImaged = await compressImage(imageBuffer, imageName, {
-      isExtracted: !imageLessMinimun,
-      x: Math.floor((x / 100) * metadata.width!),
-      y: Math.floor((y / 100) * metadata.height!),
-      width: Math.floor((width / 100) * metadata.width!),
-      height: Math.floor((height / 100) * metadata.height!),
+      isExtracted: true,
+      ...CalculateExtract(
+        {
+          x,
+          y,
+          width,
+          height,
+        },
+        {
+          width: metadata.width!,
+          height: metadata.height!,
+        },
+      ),
     });
 
     if (!compressedImaged) {

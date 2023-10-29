@@ -22,16 +22,10 @@ export const compressImage = async (
   name: string;
   mimetype: string;
 }> => {
-  const metadata = await getMetadata(image);
   let file = null;
-  const isLess =
-    (metadata.width && metadata.width <= 500) ||
-    (metadata.height && metadata.height <= 500);
-
   const extension = path.extname(filename);
   const isGIF = extension === ".gif";
   const isPNG = extension === ".png";
-  const isJPEG = extension === ".jpeg";
   const data = isPNG
     ? {
         extension: ".png",
@@ -51,47 +45,45 @@ export const compressImage = async (
       };
 
   if (isGIF) {
-    if (!isLess && opts.isExtracted) {
-      file = await sharp(image, { animated: true })
-        .extract({
-          left: opts.x,
-          top: opts.y,
-          width: opts.width,
-          height: opts.height,
-        })
-        .sharpen()
-        .gif({ effort: 8, delay: 100 });
-    } else {
-      file = await sharp(image, { animated: true }).sharpen().gif();
-    }
+    file = sharp("./2.gif", { animated: true })
+      .extract({
+        left: opts.x,
+        top: opts.y,
+        width: opts.width,
+        height: opts.height,
+      })
+      .sharpen()
+      .gif({
+        effort: 8,
+      });
   }
-  if (isJPEG) {
-    if (isLess) {
-      file = await sharp(image, { animated: false })
-        .sharpen()
-        .webp({ quality: 8 });
-    }
-    if (opts.isExtracted) {
-      file = await sharp(image, { animated: false })
-        .extract({
-          left: opts.x,
-          top: opts.y,
-          width: opts.width,
-          height: opts.height,
-        })
-        .resize(512, 512, {
-          position: "cover",
-        })
-        .sharpen()
-        .webp({ quality: 8 });
-    }
+  if (!isGIF && !isPNG) {
+    file = sharp(image, { animated: false })
+      .extract({
+        left: opts.x,
+        top: opts.y,
+        width: opts.width,
+        height: opts.height,
+      })
+      .resize(512, 512, {
+        fit: "cover",
+      })
+      .sharpen()
+      .webp({ quality: 8 });
   }
 
   if (isPNG) {
-    file = await sharp(image, { animated: true })
-      .resize(500, 500, {
-        fit: "inside",
+    file = sharp(image, { animated: true })
+      .extract({
+        left: opts.x,
+        top: opts.y,
+        width: opts.width,
+        height: opts.height,
       })
+      .resize(512, 512, {
+        fit: "cover",
+      })
+      .sharpen()
       .png({
         progressive: true,
         force: false,
