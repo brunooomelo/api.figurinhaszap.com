@@ -31,12 +31,6 @@ export const compressImage = async (
         name: "figurinha.png",
         mimetype: "image/png",
       }
-    : isGIF
-    ? {
-        extension: ".gif",
-        name: "figurinha.gif",
-        mimetype: "image/gif",
-      }
     : {
         extension: ".webp",
         name: "figurinha.webp",
@@ -44,7 +38,7 @@ export const compressImage = async (
       };
 
   if (isGIF) {
-    file = sharp(image, { animated: true })
+    file = sharp(image, { animated: true, pages: -1 })
       .extract({
         left: opts.x,
         top: opts.y,
@@ -52,9 +46,7 @@ export const compressImage = async (
         height: opts.height,
       })
       .sharpen()
-      .gif({
-        effort: 8,
-      });
+      .gif();
   }
   if (!isGIF && !isPNG) {
     file = sharp(image, { animated: false })
@@ -68,11 +60,11 @@ export const compressImage = async (
         fit: "cover",
       })
       .sharpen()
-      .webp({ quality: 8 });
+      .webp();
   }
 
   if (isPNG) {
-    file = sharp(image, { animated: true })
+    file = sharp(image)
       .extract({
         left: opts.x,
         top: opts.y,
