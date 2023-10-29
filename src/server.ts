@@ -103,11 +103,9 @@ app.post("/stickers", async (request, reply) => {
     }
 
     const imageBuffer = await data.toBuffer();
-    const imageName = data.filename;
-
     const metadata = await sharp(imageBuffer).metadata();
 
-    const compressedImaged = await compressImage(imageBuffer, imageName, {
+    const compressedImaged = await compressImage(imageBuffer, extension, {
       isExtracted: true,
       ...CalculateExtract(
         {
@@ -153,11 +151,10 @@ app.post("/stickers", async (request, reply) => {
       to = formatPhoneForWhatsapp(to);
     }
 
-    const fileBaseName = path.basename(data.filename, extension);
     const destination = path.resolve(
       __dirname,
-      "../tmp",
-      `${fileBaseName}-${randomUUID()}${compressedImaged.extension}`,
+      "../tmp/",
+      `${randomUUID()}${compressedImaged.extension}`,
     );
 
     const media = new MessageMedia(

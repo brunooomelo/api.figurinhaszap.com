@@ -14,7 +14,7 @@ type OptsCompress = {
 
 export const compressImage = async (
   image: Buffer,
-  filename: string,
+  extension: string,
   opts: OptsCompress,
 ): Promise<null | {
   buffer: Buffer;
@@ -23,7 +23,6 @@ export const compressImage = async (
   mimetype: string;
 }> => {
   let file = null;
-  const extension = path.extname(filename);
   const isGIF = extension === ".gif";
   const isPNG = extension === ".png";
   const data = isPNG
