@@ -114,10 +114,10 @@ app.post("/stickers", async (request, reply) => {
 
     const compressedImaged = await compressImage(imageBuffer, imageName, {
       isExtracted: !imageLessMinimun,
-      x: Math.floor((x / 100) * metadata.width),
-      y: Math.floor((y / 100) * metadata.height),
-      width: Math.floor((width / 100) * metadata.width),
-      height: Math.floor((height / 100) * metadata.height),
+      x: Math.floor((x / 100) * metadata.width!),
+      y: Math.floor((y / 100) * metadata.height!),
+      width: Math.floor((width / 100) * metadata.width!),
+      height: Math.floor((height / 100) * metadata.height!),
     });
 
     if (!compressedImaged) {
