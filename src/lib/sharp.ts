@@ -79,6 +79,9 @@ export const compressImage = async (
           width: opts.width,
           height: opts.height,
         })
+        .resize(512, 512, {
+          position: "cover",
+        })
         .sharpen()
         .webp({ quality: 8 });
     }
