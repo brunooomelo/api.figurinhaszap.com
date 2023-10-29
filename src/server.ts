@@ -44,7 +44,7 @@ app.post("/stickers", async (request, reply) => {
       Object.keys(request.body as any).map((key) => [
         key,
         (request.body as any)[key].value,
-      ])
+      ]),
     );
 
     const bodySchema = z.object({
@@ -68,7 +68,7 @@ app.post("/stickers", async (request, reply) => {
           return;
         }
         resolve(data as { id: string });
-      })
+      }),
     )) as { id: string };
 
     if (!jwtData?.id) {
@@ -104,7 +104,21 @@ app.post("/stickers", async (request, reply) => {
     const imageBuffer = await data.toBuffer();
     const imageName = data.filename;
 
-    const compressedImaged = await compressImage(imageBuffer, imageName);
+    const metadata = await sharp(imageBuffer).metadata();
+
+    const imageLessMinimun =
+      metadata.width &&
+      metadata.width <= 512 &&
+      metadata.height &&
+      metadata.height <= 512;
+
+    const compressedImaged = await compressImage(imageBuffer, imageName, {
+      isExtracted: !imageLessMinimun,
+      x: Math.floor((x / 100) * metadata.width),
+      y: Math.floor((y / 100) * metadata.height),
+      width: Math.floor((width / 100) * metadata.width),
+      height: Math.floor((height / 100) * metadata.height),
+    });
 
     if (!compressedImaged) {
       return reply.status(400).send({
@@ -140,10 +154,14 @@ app.post("/stickers", async (request, reply) => {
     const destination = path.resolve(
       __dirname,
       "../tmp",
-      `${fileBaseName}-${randomUUID()}${compressedImaged.extension}`
+      `${fileBaseName}-${randomUUID()}${compressedImaged.extension}`,
     );
 
-    const media = new MessageMedia(compressedImaged.mimetype, compressedImaged.buffer.toString('base64'), compressedImaged.name);
+    const media = new MessageMedia(
+      compressedImaged.mimetype,
+      compressedImaged.buffer.toString("base64"),
+      compressedImaged.name,
+    );
     await generateAndSendSticker(to, media, name || "", destination);
 
     const canExpositor = true;
@@ -207,7 +225,7 @@ app.post("/login", async (request, reply) => {
         generateMessageWithToken(message, {
           "[platform_name]": PLATFORM_NAME,
           "[token_verification]": token,
-        })
+        }),
       );
       return reply.status(200).send(user);
     }
@@ -229,7 +247,7 @@ app.post("/login", async (request, reply) => {
       generateMessageWithToken(message, {
         "[platform_name]": PLATFORM_NAME,
         "[token_verification]": token,
-      })
+      }),
     );
 
     return reply.status(200).send(user);
@@ -280,7 +298,7 @@ app.post("/phone/validade", async (request, reply) => {
       environments.secret,
       {
         expiresIn: "15d",
-      }
+      },
     );
 
     return reply.status(200).send({
@@ -355,17 +373,16 @@ app.get("/hc", (request, reply) => {
   });
 });
 
-
-process.on('SIGTERM', () => {
-  console.info('SIGTERM signal received.');
-  console.log('Closing http server.');
+process.on("SIGTERM", () => {
+  console.info("SIGTERM signal received.");
+  console.log("Closing http server.");
   app.close(async () => {
-    console.log('Http server closed.');
-    await prisma.$disconnect()
-    await ClientClose()
+    console.log("Http server closed.");
+    await prisma.$disconnect();
+    await ClientClose();
   });
-  process.exit()
-})
+  process.exit();
+});
 
 ClientInitialize().then(async () => {
   await prisma.analytics.upsert({
