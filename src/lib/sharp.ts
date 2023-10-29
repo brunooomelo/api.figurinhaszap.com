@@ -44,7 +44,7 @@ export const compressImage = async (
       };
 
   if (isGIF) {
-    file = sharp("./2.gif", { animated: true })
+    file = sharp(image, { animated: true })
       .extract({
         left: opts.x,
         top: opts.y,
